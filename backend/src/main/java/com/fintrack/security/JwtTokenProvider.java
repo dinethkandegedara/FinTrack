@@ -31,11 +31,16 @@ public class JwtTokenProvider {
             @Value("${app.jwt.expiration-ms}") long jwtExpirationInMs) {
 
         byte[] keyBytes;
-        // Decode hex/base64 secret or use UTF-8 bytes if needed
         try {
-            keyBytes = Decoders.HEX.decode(jwtSecret);
+            keyBytes = Decoders.BASE64.decode(jwtSecret);
         } catch (Exception e) {
-            keyBytes = jwtSecret.getBytes();
+            keyBytes = jwtSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+        if (keyBytes.length < 32) {
+            // Pad or fallback to ensure sufficient HMAC-SHA256 key length (256 bits)
+            byte[] padded = new byte[32];
+            System.arraycopy(keyBytes, 0, padded, 0, Math.min(keyBytes.length, 32));
+            keyBytes = padded;
         }
         this.key = Keys.hmacShaKeyFor(keyBytes);
         this.jwtExpirationInMs = jwtExpirationInMs;
